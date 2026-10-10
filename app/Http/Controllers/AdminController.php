@@ -13,7 +13,7 @@ class AdminController extends Controller
 {
     public function index() // lists customers
     {
-        return response()->json(User::where('role', 'Customer')->with('tiffins')->get());
+        return response()->json(User::where('role', 'Customer')->with(['tiffins', 'leaves'])->get());
     }
 
     public function store(Request $request) // create customer

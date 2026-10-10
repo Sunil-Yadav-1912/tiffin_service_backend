@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Leave;
 use App\Models\DailyLog;
 use App\Models\Bill;
+use Carbon\CarbonPeriod;
 
 class CustomerController extends Controller
 {
@@ -47,12 +48,27 @@ class CustomerController extends Controller
             'to_date' => 'required|date|after_or_equal:from_date',
         ]);
 
-        $leave = $request->user()->leaves()->create($validated);
+        $user = $request->user();
+        $leave = $user->leaves()->create($validated);
 
-        // Also update any existing daily logs in this date range to 'Cancelled'
-        DailyLog::where('user_id', $request->user()->id)
-            ->whereBetween('date', [$validated['from_date'], $validated['to_date']])
-            ->update(['status' => 'Cancelled']);
+        // Explictly create 'Cancelled' logs for all days in the range so they appear immediately in UI
+        $period = CarbonPeriod::create($validated['from_date'], $validated['to_date']);
+        $tiffinIds = $user->tiffins()->pluck('tiffins.id');
+
+        foreach ($period as $date) {
+            foreach ($tiffinIds as $tiffinId) {
+                DailyLog::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'tiffin_id' => $tiffinId,
+                        'date' => $date->toDateString(),
+                    ],
+                    [
+                        'status' => 'Cancelled'
+                    ]
+                );
+            }
+        }
 
         return response()->json(['message' => 'Leave scheduled successfully', 'leave' => $leave]);
     }
