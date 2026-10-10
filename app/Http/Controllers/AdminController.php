@@ -120,11 +120,17 @@ class AdminController extends Controller
                 // wait, the prompt says "When i am marking cancelled or delivered... nothing changes".
                 // If a user has multiple tiffins, the daily log NEEDS a tiffin_id.
                 // Let's count delivered logs for this specific tiffin.
-                $deliveredCount = DailyLog::where('user_id', $customer->id)
+                $logs = DailyLog::where('user_id', $customer->id)
                     ->where('tiffin_id', $tiffin->id)
-                    ->where('status', 'Delivered')
                     ->whereBetween('date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
-                    ->count();
+                    ->orderBy('date', 'desc')
+                    ->orderBy('updated_at', 'desc')
+                    ->get();
+                
+                // Deduplicate by picking the latest modified log for each date
+                $deduplicatedLogs = $logs->unique('date');
+                
+                $deliveredCount = $deduplicatedLogs->where('status', 'Delivered')->count();
 
                 $totalAmount += ($deliveredCount * $tiffin->price);
             }

@@ -76,6 +76,13 @@ class CustomerController extends Controller
     public function destroy(Request $request, $id) // Delete leave
     {
         $leave = $request->user()->leaves()->findOrFail($id);
+        
+        // Delete the Cancelled daily logs that were created for this leave
+        DailyLog::where('user_id', $request->user()->id)
+            ->whereBetween('date', [$leave->from_date, $leave->to_date])
+            ->where('status', 'Cancelled')
+            ->delete();
+
         $leave->delete();
 
         return response()->json(['message' => 'Leave cancelled successfully']);
