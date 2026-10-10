@@ -1,0 +1,482 @@
+{
+	"info": {
+		"name": "Tiffin Service API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.access_token) {",
+									"    pm.collectionVariables.set(\"token\", jsonData.access_token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"logout"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Customer Panel",
+			"item": [
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/customer/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer",
+								"profile"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"9876543210\",\n    \"address\": \"456 New St, Apt 2\",\n    \"selected_tiffin_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/customer/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer",
+								"profile"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Leaves",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/customer/leaves",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer",
+								"leaves"
+							]
+						}
+					}
+				},
+				{
+					"name": "Schedule Leave",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"from_date\": \"2026-10-15\",\n    \"to_date\": \"2026-10-18\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/customer/leaves",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer",
+								"leaves"
+							]
+						}
+					}
+				},
+				{
+					"name": "Cancel Leave",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/customer/leaves/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer",
+								"leaves",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Daily Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/customer/logs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer",
+								"logs"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Bills",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/customer/bills",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"customer",
+								"bills"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Admin Panel",
+			"item": [
+				{
+					"name": "Get Customers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/customers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"customers"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Customer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Alice Smith\",\n    \"email\": \"alice@example.com\",\n    \"password\": \"password\",\n    \"phone\": \"1112223333\",\n    \"address\": \"789 Park Ave\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/customers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"customers"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Customer Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/customers/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"customers",
+								"1"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Tiffins",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/tiffins",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"tiffins"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Daily Logs by Date",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/daily-logs?date=2026-10-10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"daily-logs"
+							],
+							"query": [
+								{
+									"key": "date",
+									"value": "2026-10-10"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Bulk Update Daily Logs",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"log_ids\": [1, 2, 3],\n    \"status\": \"Delivered\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/daily-logs/bulk-update",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"daily-logs",
+								"bulk-update"
+							]
+						}
+					}
+				},
+				{
+					"name": "Generate Bills",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/billing/generate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"billing",
+								"generate"
+							]
+						}
+					}
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
