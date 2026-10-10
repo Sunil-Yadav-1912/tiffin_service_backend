@@ -136,9 +136,13 @@ class AdminController extends Controller
             }
 
             if ($totalAmount > 0) {
-                $advancePayment = $customer->advance_payment;
+                $existingBill = Bill::where('user_id', $customer->id)
+                    ->where('month_year', $monthYear)
+                    ->first();
+                
+                $availableAdvance = $customer->advance_payment + ($existingBill ? $existingBill->advance_deducted : 0);
 
-                $advanceDeducted = min($totalAmount, $advancePayment);
+                $advanceDeducted = min($totalAmount, $availableAdvance);
                 $payableAmount = $totalAmount - $advanceDeducted;
 
                 $bill = Bill::updateOrCreate(
@@ -153,11 +157,9 @@ class AdminController extends Controller
                     ]
                 );
 
-                // Deduct the advance from user
-                if ($advanceDeducted > 0 && $bill->wasRecentlyCreated) {
-                    $customer->advance_payment -= $advanceDeducted;
-                    $customer->save();
-                }
+                // Update the customer's balance accurately
+                $customer->advance_payment = $availableAdvance - $advanceDeducted;
+                $customer->save();
 
                 $generatedBills[] = $bill;
             }
