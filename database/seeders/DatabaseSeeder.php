@@ -158,7 +158,7 @@ class DatabaseSeeder extends Seeder
                     DailyLog::create([
                         'user_id' => $customer->id,
                         'tiffin_id' => $tiffin->id,
-                        'date' => Carbon::today()->subDays($i),
+                        'date' => Carbon::today()->subDays($i)->toDateString(),
                         'status' => $i == 0 ? 'Pending' : ($i % 3 == 0 ? 'Cancelled' : 'Delivered'), // Mix of statuses
                     ]);
                 }
