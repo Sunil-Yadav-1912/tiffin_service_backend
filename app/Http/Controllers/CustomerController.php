@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Leave;
 use App\Models\DailyLog;
 use App\Models\Bill;
+use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 
 class CustomerController extends Controller
@@ -90,6 +91,36 @@ class CustomerController extends Controller
 
     public function getLogs(Request $request)
     {
+        $user = $request->user()->load(['tiffins' => function ($q) {
+            $q->where('category', 'Monthly')->orWhere('price', '>=', 500);
+        }, 'leaves']);
+
+        $today = Carbon::today();
+        $startOfMonth = $today->copy()->startOfMonth();
+
+        // Ensure logs exist from start of month up to today for subscribed mess tiffins
+        if ($user->tiffins->isNotEmpty()) {
+            for ($date = $startOfMonth->copy(); $date->lte($today); $date->addDay()) {
+                $dateStr = $date->toDateString();
+                $isOnLeave = $user->leaves->contains(function ($leave) use ($dateStr) {
+                    return $dateStr >= $leave->from_date && $dateStr <= $leave->to_date;
+                });
+
+                foreach ($user->tiffins as $tiffin) {
+                    DailyLog::firstOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'tiffin_id' => $tiffin->id,
+                            'date' => $dateStr,
+                        ],
+                        [
+                            'status' => $isOnLeave ? 'Cancelled' : 'Delivered',
+                        ]
+                    );
+                }
+            }
+        }
+
         return response()->json($request->user()->dailyLogs()->orderBy('date', 'desc')->get());
     }
 

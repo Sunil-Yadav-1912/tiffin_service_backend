@@ -39,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/daily-logs', [AdminController::class, 'getLogsByDate']);
         Route::post('/daily-logs/bulk-update', [AdminController::class, 'bulkUpdateLogs']);
         
+        Route::get('/billing', [AdminController::class, 'getBills']);
         Route::post('/billing/generate', [AdminController::class, 'generateBills']);
+        Route::put('/billing/{id}/status', [AdminController::class, 'updateBillStatus']);
     });
 });

@@ -68,6 +68,37 @@ class AdminController extends Controller
     public function getLogsByDate(Request $request)
     {
         $date = $request->query('date', Carbon::today()->toDateString());
+
+        // For all customers who have mess subscriptions, ensure a log exists for this date.
+        // Default to 'Cancelled' if they are on leave, or 'Delivered' by default.
+        $messCustomers = User::where('role', 'Customer')
+            ->whereHas('tiffins', function ($q) {
+                $q->where('category', 'Monthly')->orWhere('price', '>=', 500);
+            })
+            ->with(['tiffins' => function ($q) {
+                $q->where('category', 'Monthly')->orWhere('price', '>=', 500);
+            }, 'leaves'])
+            ->get();
+
+        foreach ($messCustomers as $customer) {
+            $isOnLeave = $customer->leaves->contains(function ($leave) use ($date) {
+                return $date >= $leave->from_date && $date <= $leave->to_date;
+            });
+
+            foreach ($customer->tiffins as $tiffin) {
+                DailyLog::firstOrCreate(
+                    [
+                        'user_id' => $customer->id,
+                        'tiffin_id' => $tiffin->id,
+                        'date' => $date,
+                    ],
+                    [
+                        'status' => $isOnLeave ? 'Cancelled' : 'Delivered',
+                    ]
+                );
+            }
+        }
+
         return response()->json(DailyLog::with('user', 'tiffin')->whereDate('date', $date)->get());
     }
 
@@ -97,17 +128,31 @@ class AdminController extends Controller
     // Billing
     public function generateBills(Request $request)
     {
-        $validated = $request->validate([
-            'month_year' => 'nullable|date_format:m-Y',
-        ]);
+        $inputMonthYear = $request->input('month_year');
+        if ($inputMonthYear) {
+            $parts = explode('-', $inputMonthYear);
+            if (count($parts) === 2) {
+                $monthYear = str_pad($parts[0], 2, '0', STR_PAD_LEFT) . '-' . $parts[1];
+            } else {
+                $monthYear = $inputMonthYear;
+            }
+        } else {
+            $monthYear = Carbon::today()->format('m-Y');
+        }
 
-        $monthYear = $validated['month_year'] ?? Carbon::today()->format('m-Y');
         $date = Carbon::createFromFormat('m-Y', $monthYear);
-
         $startOfMonth = $date->copy()->startOfMonth();
         $endOfMonth = $date->copy()->endOfMonth();
 
-        $customers = User::where('role', 'Customer')->has('tiffins')->with('tiffins')->get();
+        // Process only mess subscribers
+        $customers = User::where('role', 'Customer')
+            ->whereHas('tiffins', function ($q) {
+                $q->where('category', 'Monthly')->orWhere('price', '>=', 500);
+            })
+            ->with(['tiffins' => function ($q) {
+                $q->where('category', 'Monthly')->orWhere('price', '>=', 500);
+            }])
+            ->get();
 
         $generatedBills = [];
 
@@ -115,24 +160,8 @@ class AdminController extends Controller
             $totalAmount = 0;
 
             foreach ($customer->tiffins as $tiffin) {
-                // If daily_logs has tiffin_id, use it. But since older logs might not have it,
-                // and the user might just want a flat monthly calculation if logs aren't perfect,
-                // wait, the prompt says "When i am marking cancelled or delivered... nothing changes".
-                // If a user has multiple tiffins, the daily log NEEDS a tiffin_id.
-                // Let's count delivered logs for this specific tiffin.
-                $logs = DailyLog::where('user_id', $customer->id)
-                    ->where('tiffin_id', $tiffin->id)
-                    ->whereBetween('date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
-                    ->orderBy('date', 'desc')
-                    ->orderBy('updated_at', 'desc')
-                    ->get();
-                
-                // Deduplicate by picking the latest modified log for each date
-                $deduplicatedLogs = $logs->unique('date');
-                
-                $deliveredCount = $deduplicatedLogs->where('status', 'Delivered')->count();
-
-                $totalAmount += ($deliveredCount * $tiffin->price);
+                // Fixed monthly mess subscription fee (No refund policy for skipping)
+                $totalAmount += $tiffin->price;
             }
 
             if ($totalAmount > 0) {
@@ -169,5 +198,36 @@ class AdminController extends Controller
             'message' => "Bills successfully generated for $monthYear.",
             'bills' => $generatedBills
         ]);
+    }
+
+    public function getBills(Request $request)
+    {
+        $monthYear = $request->query('month_year');
+        $query = Bill::with(['user.tiffins'])->orderBy('created_at', 'desc');
+
+        if ($monthYear) {
+            $parts = explode('-', $monthYear);
+            if (count($parts) === 2) {
+                $normalizedMonthYear = str_pad($parts[0], 2, '0', STR_PAD_LEFT) . '-' . $parts[1];
+                $query->where('month_year', $normalizedMonthYear);
+            } else {
+                $query->where('month_year', $monthYear);
+            }
+        }
+
+        return response()->json($query->get());
+    }
+
+    public function updateBillStatus(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:Paid,Unpaid'
+        ]);
+
+        $bill = Bill::findOrFail($id);
+        $bill->status = $validated['status'];
+        $bill->save();
+
+        return response()->json(['message' => 'Bill status updated successfully', 'bill' => $bill]);
     }
 }
