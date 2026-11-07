@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Notification;
+use App\Services\WebPushService;
 
 class AuthController extends Controller
 {
@@ -43,6 +44,18 @@ class AuthController extends Controller
                 'name' => $user->name,
             ],
         ]);
+
+        // Send instant Web Push Notification to all subscribed admin devices (wakes up mobile/desktop even if browser is closed)
+        WebPushService::notifyAdmins(
+            'New Customer Registered',
+            "{$user->name} ({$user->email}) has registered on Crownora Group.",
+            [
+                'url' => '/admin/dashboard',
+                'phone' => $user->phone,
+                'email' => $user->email,
+                'type' => 'new_customer',
+            ]
+        );
 
         $token = $user->createToken('auth_token')->plainTextToken;
 

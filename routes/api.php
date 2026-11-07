@@ -48,5 +48,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/notifications', [AdminController::class, 'getNotifications']);
         Route::put('/notifications/{id}/read', [AdminController::class, 'markNotificationRead']);
         Route::put('/notifications/read-all', [AdminController::class, 'markAllNotificationsRead']);
+
+        // Push Notifications
+        Route::get('/vapid-public-key', [AdminController::class, 'getVapidPublicKey']);
+        Route::post('/push-subscription', [AdminController::class, 'savePushSubscription']);
     });
 });

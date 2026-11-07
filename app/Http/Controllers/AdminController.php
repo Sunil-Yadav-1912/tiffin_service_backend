@@ -8,6 +8,8 @@ use App\Models\Tiffin;
 use App\Models\DailyLog;
 use App\Models\Bill;
 use App\Models\Notification;
+use App\Models\PushSubscription;
+use App\Services\WebPushService;
 use Carbon\Carbon;
 
 class AdminController extends Controller
@@ -53,6 +55,12 @@ class AdminController extends Controller
                 'name' => $user->name,
             ],
         ]);
+
+        WebPushService::notifyAdmins(
+            'New Customer Added',
+            "{$user->name} ({$user->email}) was added by Admin.",
+            ['phone' => $user->phone, 'email' => $user->email]
+        );
 
         return response()->json(['message' => 'Customer created', 'user' => $user->load('tiffins')]);
     }
@@ -273,5 +281,33 @@ class AdminController extends Controller
         Notification::where('read', false)->update(['read' => true]);
 
         return response()->json(['message' => 'All notifications marked as read']);
+    }
+
+    // Push Notifications
+    public function getVapidPublicKey()
+    {
+        return response()->json(['public_key' => WebPushService::getPublicKey()]);
+    }
+
+    public function savePushSubscription(Request $request)
+    {
+        $validated = $request->validate([
+            'endpoint' => 'required|string',
+            'keys' => 'required|array',
+            'keys.p256dh' => 'required|string',
+            'keys.auth' => 'required|string',
+        ]);
+
+        $sub = PushSubscription::updateOrCreate(
+            ['endpoint' => $validated['endpoint']],
+            [
+                'user_id' => $request->user()->id,
+                'public_key' => $request->input('keys.p256dh'),
+                'auth_token' => $request->input('keys.auth'),
+                'content_encoding' => $request->input('content_encoding', 'aesgcm'),
+            ]
+        );
+
+        return response()->json(['message' => 'Push subscription saved successfully', 'subscription' => $sub]);
     }
 }
