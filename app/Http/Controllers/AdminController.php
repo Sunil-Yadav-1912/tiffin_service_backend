@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Tiffin;
 use App\Models\DailyLog;
 use App\Models\Bill;
+use App\Models\Notification;
 use Carbon\Carbon;
 
 class AdminController extends Controller
@@ -38,6 +39,20 @@ class AdminController extends Controller
         if (!empty($validated['tiffin_ids'])) {
             $user->tiffins()->sync($validated['tiffin_ids']);
         }
+
+        Notification::create([
+            'user_id' => $user->id,
+            'type' => 'new_customer',
+            'title' => 'New Customer Added',
+            'message' => "{$user->name} ({$user->email}) was added by Admin.",
+            'read' => false,
+            'meta' => [
+                'phone' => $user->phone,
+                'address' => $user->address,
+                'email' => $user->email,
+                'name' => $user->name,
+            ],
+        ]);
 
         return response()->json(['message' => 'Customer created', 'user' => $user->load('tiffins')]);
     }
@@ -229,5 +244,34 @@ class AdminController extends Controller
         $bill->save();
 
         return response()->json(['message' => 'Bill status updated successfully', 'bill' => $bill]);
+    }
+
+    // Notifications
+    public function getNotifications(Request $request)
+    {
+        $notifications = Notification::with('user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($notifications);
+    }
+
+    public function markNotificationRead($id)
+    {
+        $notification = Notification::findOrFail($id);
+        $notification->read = true;
+        $notification->save();
+
+        return response()->json([
+            'message' => 'Notification marked as read',
+            'notification' => $notification
+        ]);
+    }
+
+    public function markAllNotificationsRead()
+    {
+        Notification::where('read', false)->update(['read' => true]);
+
+        return response()->json(['message' => 'All notifications marked as read']);
     }
 }

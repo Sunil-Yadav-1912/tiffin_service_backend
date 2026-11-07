@@ -13,6 +13,7 @@ Route::get('/user', function (Request $request) {
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
 Route::get('/tiffins', [TiffinController::class, 'index']);
 Route::get('/tiffins/{id}', [TiffinController::class, 'show']);
 
@@ -42,5 +43,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/billing', [AdminController::class, 'getBills']);
         Route::post('/billing/generate', [AdminController::class, 'generateBills']);
         Route::put('/billing/{id}/status', [AdminController::class, 'updateBillStatus']);
+
+        // Notifications
+        Route::get('/notifications', [AdminController::class, 'getNotifications']);
+        Route::put('/notifications/{id}/read', [AdminController::class, 'markNotificationRead']);
+        Route::put('/notifications/read-all', [AdminController::class, 'markAllNotificationsRead']);
     });
 });
