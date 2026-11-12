@@ -10,6 +10,7 @@ use App\Models\Bill;
 use App\Models\Notification;
 use App\Models\PushSubscription;
 use App\Services\WebPushService;
+use App\Services\BillingMailService;
 use Carbon\Carbon;
 
 class AdminController extends Controller
@@ -152,75 +153,42 @@ class AdminController extends Controller
     public function generateBills(Request $request)
     {
         $inputMonthYear = $request->input('month_year');
-        if ($inputMonthYear) {
-            $parts = explode('-', $inputMonthYear);
-            if (count($parts) === 2) {
-                $monthYear = str_pad($parts[0], 2, '0', STR_PAD_LEFT) . '-' . $parts[1];
-            } else {
-                $monthYear = $inputMonthYear;
-            }
-        } else {
-            $monthYear = Carbon::today()->format('m-Y');
-        }
-
-        $date = Carbon::createFromFormat('m-Y', $monthYear);
-        $startOfMonth = $date->copy()->startOfMonth();
-        $endOfMonth = $date->copy()->endOfMonth();
-
-        // Process only mess subscribers
-        $customers = User::where('role', 'Customer')
-            ->whereHas('tiffins', function ($q) {
-                $q->where('category', 'Monthly')->orWhere('price', '>=', 500);
-            })
-            ->with(['tiffins' => function ($q) {
-                $q->where('category', 'Monthly')->orWhere('price', '>=', 500);
-            }])
-            ->get();
-
-        $generatedBills = [];
-
-        foreach ($customers as $customer) {
-            $totalAmount = 0;
-
-            foreach ($customer->tiffins as $tiffin) {
-                // Fixed monthly mess subscription fee (No refund policy for skipping)
-                $totalAmount += $tiffin->price;
-            }
-
-            if ($totalAmount > 0) {
-                $existingBill = Bill::where('user_id', $customer->id)
-                    ->where('month_year', $monthYear)
-                    ->first();
-                
-                $availableAdvance = $customer->advance_payment + ($existingBill ? $existingBill->advance_deducted : 0);
-
-                $advanceDeducted = min($totalAmount, $availableAdvance);
-                $payableAmount = $totalAmount - $advanceDeducted;
-
-                $bill = Bill::updateOrCreate(
-                    [
-                        'user_id' => $customer->id,
-                        'month_year' => $monthYear,
-                    ],
-                    [
-                        'total_amount' => $totalAmount,
-                        'advance_deducted' => $advanceDeducted,
-                        'payable_amount' => $payableAmount,
-                    ]
-                );
-
-                // Update the customer's balance accurately
-                $customer->advance_payment = $availableAdvance - $advanceDeducted;
-                $customer->save();
-
-                $generatedBills[] = $bill;
-            }
-        }
+        $monthYear = BillingMailService::normalizeMonthYear($inputMonthYear);
+        $generatedBills = BillingMailService::generateBillsForMonth($monthYear);
 
         return response()->json([
             'message' => "Bills successfully generated for $monthYear.",
             'bills' => $generatedBills
         ]);
+    }
+
+    public function sendMonthlyBillingEmail(Request $request)
+    {
+        $monthYear = $request->input('month_year');
+        $email = $request->input('email');
+
+        $result = BillingMailService::sendMonthlyBillingSummary($monthYear, $email);
+
+        return response()->json($result);
+    }
+
+    public function previewMonthlyBillingEmail(Request $request)
+    {
+        $monthYear = BillingMailService::normalizeMonthYear($request->input('month_year'));
+        $bills = BillingMailService::generateBillsForMonth($monthYear);
+
+        $summary = [
+            'total_customers' => $bills->count(),
+            'total_gross' => (float) $bills->sum('total_amount'),
+            'total_advance_deducted' => (float) $bills->sum('advance_deducted'),
+            'total_payable' => (float) $bills->sum('payable_amount'),
+            'paid_count' => $bills->filter(fn($b) => strtolower($b->status) === 'paid')->count(),
+            'unpaid_count' => $bills->filter(fn($b) => strtolower($b->status) !== 'paid')->count(),
+            'paid_amount' => (float) $bills->filter(fn($b) => strtolower($b->status) === 'paid')->sum('payable_amount'),
+            'unpaid_amount' => (float) $bills->filter(fn($b) => strtolower($b->status) !== 'paid')->sum('payable_amount'),
+        ];
+
+        return new \App\Mail\MonthlyBillingSummaryMail($monthYear, $bills, $summary);
     }
 
     public function getBills(Request $request)

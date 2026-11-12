@@ -29,6 +29,11 @@ class WebPushService
      */
     public static function notifyAdmins(string $title, string $message, array $extraData = []): void
     {
+        if (!class_exists('Minishlink\WebPush\WebPush')) {
+            Log::warning('WebPush package is not installed. Please run "composer install" on server.');
+            return;
+        }
+
         $subscriptions = PushSubscription::all();
 
         if ($subscriptions->isEmpty()) {

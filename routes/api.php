@@ -12,7 +12,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 // Public routes
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register']);
 Route::get('/tiffins', [TiffinController::class, 'index']);
 Route::get('/tiffins/{id}', [TiffinController::class, 'show']);
@@ -41,7 +41,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/daily-logs/bulk-update', [AdminController::class, 'bulkUpdateLogs']);
         
         Route::get('/billing', [AdminController::class, 'getBills']);
+        Route::get('/billing/preview-email', [AdminController::class, 'previewMonthlyBillingEmail']);
         Route::post('/billing/generate', [AdminController::class, 'generateBills']);
+        Route::post('/billing/send-email-summary', [AdminController::class, 'sendMonthlyBillingEmail']);
         Route::put('/billing/{id}/status', [AdminController::class, 'updateBillStatus']);
 
         // Notifications
