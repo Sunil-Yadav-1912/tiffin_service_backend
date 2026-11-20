@@ -16,19 +16,32 @@ class CustomerController extends Controller
         return response()->json($request->user()->load('tiffins'));
     }
 
+    public function register(Request $request)
+    {
+        return app(AuthController::class)->register($request);
+    }
+
     public function updateProfile(Request $request)
     {
         $validated = $request->validate([
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'tiffin_ids' => 'nullable|array',
-            'tiffin_ids.*' => 'exists:tiffins,id'
+            'tiffin_ids.*' => 'exists:tiffins,id',
+            'tiffin_id' => 'nullable|exists:tiffins,id',
         ]);
 
-        $request->user()->update($request->except('tiffin_ids'));
+        $request->user()->update($request->except(['tiffin_ids', 'tiffin_id']));
 
         if ($request->has('tiffin_ids')) {
-            $request->user()->tiffins()->sync($validated['tiffin_ids']);
+            $request->user()->tiffins()->sync($validated['tiffin_ids'] ?? []);
+            if (!empty($validated['tiffin_ids'])) {
+                $request->user()->update(['selected_tiffin_id' => $validated['tiffin_ids'][0]]);
+            }
+        } elseif ($request->has('tiffin_id')) {
+            $ids = !empty($validated['tiffin_id']) ? [$validated['tiffin_id']] : [];
+            $request->user()->tiffins()->sync($ids);
+            $request->user()->update(['selected_tiffin_id' => $validated['tiffin_id'] ?: null]);
         }
 
         return response()->json([
