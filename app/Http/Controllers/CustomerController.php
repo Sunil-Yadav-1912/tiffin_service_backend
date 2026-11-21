@@ -111,9 +111,21 @@ class CustomerController extends Controller
         $today = Carbon::today();
         $startOfMonth = $today->copy()->startOfMonth();
 
-        // Ensure logs exist from start of month up to today for subscribed mess tiffins
+        // Start date should be the customer's joining date if registered in the current month,
+        // or the start of the current month if they registered before.
+        $joinDate = $user->created_at ? $user->created_at->copy()->startOfDay() : $startOfMonth;
+        $startDate = $joinDate->gt($startOfMonth) ? $joinDate : $startOfMonth;
+
+        // Clean up any historical logs erroneously generated before the customer joined
+        if ($user->created_at) {
+            DailyLog::where('user_id', $user->id)
+                ->where('date', '<', $user->created_at->toDateString())
+                ->delete();
+        }
+
+        // Ensure logs exist from start date (joining date or start of month) up to today for subscribed mess tiffins
         if ($user->tiffins->isNotEmpty()) {
-            for ($date = $startOfMonth->copy(); $date->lte($today); $date->addDay()) {
+            for ($date = $startDate->copy(); $date->lte($today); $date->addDay()) {
                 $dateStr = $date->toDateString();
                 $isOnLeave = $user->leaves->contains(function ($leave) use ($dateStr) {
                     return $dateStr >= $leave->from_date && $dateStr <= $leave->to_date;

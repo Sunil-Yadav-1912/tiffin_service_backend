@@ -105,6 +105,11 @@ class AdminController extends Controller
             ->get();
 
         foreach ($messCustomers as $customer) {
+            // Do not generate logs for dates before the customer joined
+            if ($customer->created_at && Carbon::parse($date)->lt($customer->created_at->copy()->startOfDay())) {
+                continue;
+            }
+
             $isOnLeave = $customer->leaves->contains(function ($leave) use ($date) {
                 return $date >= $leave->from_date && $date <= $leave->to_date;
             });
